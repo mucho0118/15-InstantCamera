@@ -33,7 +33,7 @@ struct ContentView: View {
             .disabled(selectedItem == nil)
         }
         .padding(.horizontal)
-        .onChange(of: selectedImage, initial: true) {
+        .onChange(of: selectedItem, initial: true) {
             loadImage()
         }
         .alert(isPresented: $showAlert){
