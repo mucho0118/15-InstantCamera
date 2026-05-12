@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Photos
 import PhotosUI
 
 struct ContentView: View {
@@ -24,13 +25,14 @@ struct ContentView: View {
                 .clipShape(.rect(cornerRadius: 10))
                 .padding(.bottom, 8)
             Button {
+                saveEditedImage()
             } label: {
                 Label("保存する", systemImage: "square.and.arrow.down")
                     .frame(maxWidth: .infinity, minHeight: 50)
             }
             .buttonStyle(.borderedProminent)
             .tint(.blue)
-            .disabled(selectedItem == nil)
+            .disabled(selectedImage == nil)
         }
         .padding(.horizontal)
         .onChange(of: selectedItem, initial: true) {
@@ -55,7 +57,7 @@ struct ContentView: View {
                                 if let displayImage = selectedImage{
                                     displayImage
                                         .resizable()
-                                        .scaledToFit()
+                                        .scaledToFill()
                                         .frame(width: 300, height: 400)
                                         .clipped()
                                 } else {
@@ -68,6 +70,9 @@ struct ContentView: View {
                                 }
                             }
                         Text(text)
+                            .font(.custom("yosugara ver12", size: 40))
+                                            .foregroundStyle(.black)
+                                            .frame(height: 40)
                     }
                         PhotosPicker(selection: $selectedItem, matching: .images, photoLibrary: .shared()){
                             Color.clear
@@ -83,7 +88,9 @@ struct ContentView: View {
                 switch result {
                 case .success(let data):
                     if let data = data, let uiImage = UIImage(data: data){
-                        selectedImage = Image(uiImage: uiImage)
+                        Task { @MainActor in
+                            selectedImage = Image(uiImage: uiImage)
+                        }
                     } else{
                     }
                 case .failure(let error):
@@ -91,6 +98,33 @@ struct ContentView: View {
                 }
             }
         }
+    private func saveEditedImage() {
+        let renderer = ImageRenderer(content: imageWithFrame)
+        renderer.scale = 3
+        
+        if let uiImage = renderer.uiImage {
+            PHPhotoLibrary.shared().performChanges {
+                PHAssetChangeRequest.creationRequestForAsset(from: uiImage)
+            } completionHandler: { success, error in
+                if let error {
+                    print("画像の保存に失敗しました:\(error.localizedDescription)")
+                    return
+                }
+
+                guard success else { return }
+                Task { @MainActor in
+                    showAlert = true
+                    clearInput()
+                }
+            }
+        }
+    }
+    
+    private func clearInput() {
+        selectedImage = nil
+        selectedItem = nil
+        text = ""
+    }
 }
 
 #Preview {
